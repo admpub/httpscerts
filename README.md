@@ -52,11 +52,21 @@ import (
 	"time"
 )
 
+type testHandler struct {
+}
+
+func (t *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Hi there!")
+}
+
 func main() {
 	// Check if the cert files are available.
 	certFile := "cert.pem"
 	keyFile := "key.pem"
 	err := httpscerts.Check(certFile, keyFile)
+
+	var handler = &testHandler{}
+
 	// If they are not available, generate new ones.
 	if err != nil {
 		cert, key, err := httpscerts.GenerateArrays("127.0.0.1:8081")
@@ -79,8 +89,8 @@ func main() {
 		}
 
 		s := &http.Server{
-			Addr:           ":8081",
-			Handler:        http.DefaultServeMux,
+			Addr: ":8081",
+			Handler:        handler,
 			ReadTimeout:    10 * time.Second,
 			WriteTimeout:   10 * time.Second,
 			MaxHeaderBytes: 1 << 20,
@@ -89,6 +99,7 @@ func main() {
 		log.Fatal(s.ListenAndServeTLS("", ""))
 	}
 
-	log.Fatal(http.ListenAndServeTLS(":8081", certFile, keyFile, nil))
+	log.Fatal(http.ListenAndServeTLS(":8081", certFile, keyFile, handler))
 }
+
 ```

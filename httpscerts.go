@@ -6,6 +6,7 @@
 // 'cert.pem' and 'key.pem' and will overwrite existing files.
 
 // Small modifications by kabukky
+// Support cert generation without disk access by gerald1248
 
 package httpscerts
 
