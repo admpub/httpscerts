@@ -5,6 +5,8 @@ The code is modified from http://golang.org/src/crypto/tls/generate_cert.go.
 
 Use this library for testing purposes only, e.g. to experiment with the built-in Go HTTPS server. Do NOT use in production!
 
+PR for this fork is https://github.com/kabukky/httpscerts/pull/1.
+
 # Usage
 
 ```go
@@ -12,7 +14,7 @@ package main
     
 import (
     "fmt"
-    "github.com/kabukky/httpscerts"
+    "github.com/gerald1248/httpscerts"
     "log"
     "net/http"
 )
@@ -46,7 +48,7 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/kabukky/httpscerts"
+	"github.com/gerald1248/httpscerts"
 	"log"
 	"net/http"
 	"time"
