@@ -1,11 +1,11 @@
-# httpscerts
+# https/certificates
 A simple library to generate server certs and keys for HTTPS support directly within your Go program.
 
 The code is modified from http://golang.org/src/crypto/tls/generate_cert.go.
 
 Use this library for testing purposes only, e.g. to experiment with the built-in Go HTTPS server. Do NOT use in production!
 
-PR for this fork is https://github.com/kabukky/httpscerts/pull/1.
+PR for this library is https://github.com/kabukky/httpscerts and https://github.com/gerald1248/httpscerts.
 
 # Usage
 
@@ -14,7 +14,7 @@ package main
     
 import (
     "fmt"
-    "github.com/gerald1248/httpscerts"
+    "github.com/jezek/https/certificates"
     "log"
     "net/http"
 )
@@ -25,10 +25,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
     
 func main() {
     // Check if the cert files are available.
-    err := httpscerts.Check("cert.pem", "key.pem")
+    err := certificates.Check("cert.pem", "key.pem")
     // If they are not available, generate new ones.
     if err != nil {
-        err = httpscerts.Generate("cert.pem", "key.pem", "127.0.0.1:8081")
+        err = certificates.Generate("cert.pem", "key.pem", "127.0.0.1:8081")
         if err != nil {
             log.Fatal("Error: Couldn't create https certs.")
         }
@@ -40,7 +40,7 @@ func main() {
 
 # Alternative usage without disk access
 
-The method `httpscerts.GenerateArrays()` has been added to enable use cases where writing to disk is not desirable. If the initial check fails, a `tls.Certificate` is populated and passed to a `http.Server` instance.
+The method `certificates.GenerateArrays()` has been added to enable use cases where writing to disk is not desirable. If the initial check fails, a `tls.Certificate` is populated and passed to a `http.Server` instance.
 
 ```go
 package main
@@ -48,7 +48,7 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/gerald1248/httpscerts"
+	"github.com/jezek/https/certificates"
 	"log"
 	"net/http"
 	"time"
@@ -65,13 +65,13 @@ func main() {
 	// Check if the cert files are available.
 	certFile := "cert.pem"
 	keyFile := "key.pem"
-	err := httpscerts.Check(certFile, keyFile)
+	err := certificates.Check(certFile, keyFile)
 
 	var handler = &testHandler{}
 
 	// If they are not available, generate new ones.
 	if err != nil {
-		cert, key, err := httpscerts.GenerateArrays("127.0.0.1:8081")
+		cert, key, err := certificates.GenerateArrays("127.0.0.1:8081")
 		if err != nil {
 			log.Fatal("Error: Couldn't create https certs.")
 		}
