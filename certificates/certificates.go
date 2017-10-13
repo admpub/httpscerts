@@ -24,6 +24,7 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -163,6 +164,12 @@ func Generate(certPath, keyPath, host string) error {
 		return err
 	}
 
+	certDir := filepath.Dir(certPath)
+	if err := mkdirIfNecessary(certDir); err != nil {
+		log.Printf("failed to create "+certDir+": %s", err)
+		return err
+	}
+
 	err = ioutil.WriteFile(certPath, certArray, 0600)
 	if err != nil {
 		log.Printf("failed to open "+certPath+" for writing: %s", err)
@@ -170,11 +177,32 @@ func Generate(certPath, keyPath, host string) error {
 	}
 	log.Print("written cert.pem\n")
 
+	keyDir := filepath.Dir(keyPath)
+	if err := mkdirIfNecessary(keyDir); err != nil {
+		log.Printf("failed to create "+keyDir+": %s", err)
+		return err
+	}
+
 	err = ioutil.WriteFile(keyPath, keyArray, 0600)
 	if err != nil {
 		log.Printf("failed to open "+keyPath+" for writing: %s", err)
+		return err
 	}
 	log.Print("written key.pem\n")
 
 	return nil
+}
+
+func mkdirIfNecessary(dir string) error {
+	fi, err := os.Stat(dir)
+
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	if err == nil && fi.IsDir() {
+		return nil
+	}
+
+	return os.MkdirAll(dir, 0755)
 }
