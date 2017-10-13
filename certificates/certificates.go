@@ -8,7 +8,7 @@
 // Small modifications by kabukky
 // Support cert generation without disk access by gerald1248
 
-package httpscerts
+package certificates
 
 import (
 	"crypto/ecdsa"
@@ -166,7 +166,7 @@ func Generate(certPath, keyPath, host string) error {
 	err = ioutil.WriteFile(certPath, certArray, 0600)
 	if err != nil {
 		log.Printf("failed to open "+certPath+" for writing: %s", err)
-		return err		
+		return err
 	}
 	log.Print("written cert.pem\n")
 
