@@ -25,17 +25,18 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
-var (
-	validFrom  = ""
-	validFor   = 365 * 24 * time.Hour
-	isCA       = true
-	rsaBits    = 2048
-	ecdsaCurve = ""
-)
+type Config struct {
+	Hosts      []string
+	ValidFrom  string
+	ValidFor   time.Duration
+	IsCA       bool
+	RsaBits    int
+	EcdsaCurve string
+	Subject    *pkix.Name
+}
 
 func publicKey(priv interface{}) interface{} {
 	switch k := priv.(type) {
@@ -76,12 +77,20 @@ func Check(certPath string, keyPath string) error {
 //generate cert and key byte arrays
 //these can then be used to populate the server configuration
 //in place of files on disk
-func GenerateArrays(host string) ([]byte, []byte, error) {
+func GenerateArrays(c Config) ([]byte, []byte, error) {
+	if len(c.Hosts) == 0 {
+		return nil, nil, fmt.Errorf("GenerateArrays: no Config.Hosts")
+	}
+
 	var priv interface{}
 	var err error
-	switch ecdsaCurve {
+	switch c.EcdsaCurve {
 	case "":
-		priv, err = rsa.GenerateKey(rand.Reader, rsaBits)
+		if c.RsaBits == 0 {
+			log.Printf("no Conig.RsaBits, using 2048")
+			c.RsaBits = 2048
+		}
+		priv, err = rsa.GenerateKey(rand.Reader, c.RsaBits)
 	case "P224":
 		priv, err = ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
 	case "P256":
@@ -91,7 +100,7 @@ func GenerateArrays(host string) ([]byte, []byte, error) {
 	case "P521":
 		priv, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 	default:
-		fmt.Fprintf(os.Stderr, "Unrecognized elliptic curve: %q", ecdsaCurve)
+		fmt.Fprintf(os.Stderr, "Unrecognized elliptic curve: %q", c.EcdsaCurve)
 		os.Exit(1)
 	}
 	if err != nil {
@@ -100,17 +109,21 @@ func GenerateArrays(host string) ([]byte, []byte, error) {
 	}
 
 	var notBefore time.Time
-	if len(validFrom) == 0 {
+	if len(c.ValidFrom) == 0 {
 		notBefore = time.Now()
 	} else {
-		notBefore, err = time.Parse("Jan 2 15:04:05 2006", validFrom)
+		notBefore, err = time.Parse("Jan 2 15:04:05 2006", c.ValidFrom)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to parse creation date: %s\n", err)
 			return nil, nil, err
 		}
 	}
 
-	notAfter := notBefore.Add(validFor)
+	if c.ValidFor == 0 {
+		log.Printf("no Conig.ValidFor, using one year")
+		c.ValidFor = 365 * 24 * time.Hour
+	}
+	notAfter := notBefore.Add(c.ValidFor)
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
@@ -119,21 +132,25 @@ func GenerateArrays(host string) ([]byte, []byte, error) {
 		return nil, nil, err
 	}
 
+	if c.Subject == nil {
+		log.Printf("no Conig.Subject, using default")
+		c.Subject = &pkix.Name{
+			Organization: []string{"Acme Co"},
+		}
+	}
+
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			Organization: []string{"Acme Co"},
-		},
-		NotBefore: notBefore,
-		NotAfter:  notAfter,
+		Subject:      *c.Subject,
+		NotBefore:    notBefore,
+		NotAfter:     notAfter,
 
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
 	}
 
-	hosts := strings.Split(host, ",")
-	for _, h := range hosts {
+	for _, h := range c.Hosts {
 		if ip := net.ParseIP(h); ip != nil {
 			template.IPAddresses = append(template.IPAddresses, ip)
 		} else {
@@ -141,7 +158,7 @@ func GenerateArrays(host string) ([]byte, []byte, error) {
 		}
 	}
 
-	if isCA {
+	if c.IsCA {
 		template.IsCA = true
 		template.KeyUsage |= x509.KeyUsageCertSign
 	}
@@ -158,20 +175,23 @@ func GenerateArrays(host string) ([]byte, []byte, error) {
 	return certArray, keyArray, nil
 }
 
-func Generate(certPath, keyPath, host string) error {
-	certArray, keyArray, err := GenerateArrays(host)
+func Generate(c Config, certPath, keyPath string) error {
+	certArray, keyArray, err := GenerateArrays(c)
 	if err != nil {
 		return err
 	}
 
+	return Save(certPath, keyPath, certArray, keyArray)
+}
+
+func Save(certPath, keyPath string, certArray, keyArray []byte) error {
 	certDir := filepath.Dir(certPath)
 	if err := mkdirIfNecessary(certDir); err != nil {
 		log.Printf("failed to create "+certDir+": %s", err)
 		return err
 	}
 
-	err = ioutil.WriteFile(certPath, certArray, 0600)
-	if err != nil {
+	if err := ioutil.WriteFile(certPath, certArray, 0600); err != nil {
 		log.Printf("failed to open "+certPath+" for writing: %s", err)
 		return err
 	}
@@ -183,13 +203,11 @@ func Generate(certPath, keyPath, host string) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(keyPath, keyArray, 0600)
-	if err != nil {
+	if err := ioutil.WriteFile(keyPath, keyArray, 0600); err != nil {
 		log.Printf("failed to open "+keyPath+" for writing: %s", err)
 		return err
 	}
 	log.Print("written key.pem\n")
-
 	return nil
 }
 
