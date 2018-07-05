@@ -8,7 +8,7 @@
 // Small modifications by kabukky
 // Support cert generation without disk access by gerald1248
 
-package certificates
+package httpscerts
 
 import (
 	"crypto/ecdsa"
@@ -36,6 +36,20 @@ type Config struct {
 	RsaBits    int
 	EcdsaCurve string
 	Subject    *pkix.Name
+}
+
+var DefaultConfig = Config{
+	ValidFrom:  "",
+	ValidFor:   365 * 24 * time.Hour,
+	IsCA:       true,
+	RsaBits:    2048,
+	EcdsaCurve: "",
+}
+
+func NewClassicConfig(hosts ...string) Config {
+	config := DefaultConfig
+	config.Hosts = hosts
+	return config
 }
 
 func publicKey(priv interface{}) interface{} {
