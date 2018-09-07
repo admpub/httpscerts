@@ -14,7 +14,7 @@ package main
     
 import (
     "fmt"
-    "github.com/janiltonmaciel/httpscerts"
+    "github.com/admpub/httpscerts"
     "log"
     "net/http"
 )
@@ -48,7 +48,7 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/janiltonmaciel/httpscerts"
+	"github.com/admpub/httpscerts"
 	"log"
 	"net/http"
 	"time"
